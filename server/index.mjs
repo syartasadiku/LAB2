@@ -77,3 +77,25 @@ const userUploadPath = (record, filename) => {
 const companyUploadPath = (record, filename) => {
   return `${record.params.CompanyID}/${filename}`;
 };
+
+const unlinkFileFromStorage = async (filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      await fs.promises.unlink(filePath);
+      console.log(`File unlinked: ${filePath}`);
+
+      const directoryPath = path.dirname(filePath);
+
+      const filesInDirectory = await fs.promises.readdir(directoryPath);
+      if (filesInDirectory.length === 0) {
+        await fs.promises.rmdir(directoryPath);
+        console.log(`Directory deleted: ${directoryPath}`);
+      }
+    } else {
+      console.log(`File not found: ${filePath}`);
+    }
+  } catch (error) {
+    console.error(`Error unlinking file: ${filePath}`, error);
+    throw error;
+  }
+};
