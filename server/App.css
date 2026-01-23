@@ -1,0 +1,276 @@
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.full-width {
+  width: calc(100vw - 22px);
+  position: relative;
+  left: 0%;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+.resetPassword__wrapper,
+.confirmAccount__wrapper {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background: url(http://localhost:5000/loginBG.png);
+  background-position: 50% center;
+  background-size: cover;
+  inset: 0px;
+}
+
+.resetPassword__section {
+  width: 100%;
+  box-sizing: border-box;
+  min-width: 0px;
+  display: flex;
+  font-family: "Roboto", sans-serif;
+  line-height: 16px;
+  font-size: 14px;
+  font-weight: normal;
+  background-color: rgb(255, 255, 255);
+  width: 860px;
+  background: white;
+  display: flex;
+  border-radius: 10px;
+  box-shadow: rgba(0, 0, 0, 0.1) 1px 1px 20px 5px;
+  height: 580px;
+}
+
+.resetPassword__decorative-h2 {
+  margin-bottom: 10px;
+  margin-top: 4px;
+  font-family: "Roboto", sans-serif;
+  vertical-align: middle;
+  padding: 0px;
+  font-weight: 900;
+  font-size: 32px;
+  line-height: 40px;
+}
+
+.resetPassword__decorative-p {
+  margin-bottom: 30px;
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.resetPassword__list-container {
+  font-weight: lighter;
+  margin-top: auto;
+  font-family: "Roboto", sans-serif;
+  font-size: 14px;
+  line-height: 24px;
+  font-weight: 200;
+  margin-top: 8px;
+}
+
+.resetPassword__list-container ul {
+  padding: 20px 0px 20px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.resetPassword__list-container ul li {
+  list-style-image: url(https://cloud.adminjs.co/images/list-bullet.svg);
+  font-size: 17px;
+  text-shadow: rgba(0, 0, 0, 0.3) 1px 1px 3px;
+}
+
+.resetPassword__decorative {
+  color: white;
+  border-radius: 10px;
+  box-shadow: rgba(0, 0, 0, 0.4) 5px 0px 15px -5px;
+  background: linear-gradient(204.24deg, purple -0.04%, violet 84.48%);
+  padding: 48px;
+  flex-grow: 0;
+  position: relative;
+  width: 45%;
+  text-align: start;
+}
+
+.resetPassword__decorative > * {
+  z-index: 1;
+  position: relative;
+}
+
+.resetPassword__decorative:after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 10px;
+  background: url(http://localhost:5000/loginHeroBG.webp);
+  background-size: auto 580px;
+  opacity: 0.65;
+  animation: moveBackground 75s linear 0s infinite normal none running;
+}
+
+.resetPassword__form {
+  box-sizing: border-box;
+  min-width: 0px;
+  font-family: "Roboto", sans-serif;
+  line-height: 16px;
+  font-size: 14px;
+  font-weight: normal;
+  padding: 48px;
+  width: 100%;
+  -moz-box-flex: 1;
+  flex-grow: 1;
+}
+
+.resetPassword__form-title {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 15px;
+}
+
+.resetPassword__form-title h3 {
+  margin: 0;
+  font-size: 28px;
+  font-family: TTNormsBold, Roboto;
+  font-weight: bold;
+}
+
+.resetPassword__form-title h5 {
+  margin: 0;
+  font-family: "Roboto", sans-serif;
+  padding: 0px;
+  font-size: 18px;
+  line-height: 24px;
+  font-weight: 400;
+}
+
+.resetPassword__form-message-container {
+  box-sizing: border-box;
+  min-width: 0px;
+  font-family: "Roboto", sans-serif;
+  line-height: 16px;
+  font-size: 14px;
+  font-weight: normal;
+  margin-top: 16px;
+  margin-bottom: 16px;
+}
+
+.resetPassword__form-message {
+  line-height: 16px;
+  border-radius: 4px;
+  color: rgb(12, 30, 41);
+  padding: 12px 22px;
+  white-space: pre-wrap;
+  box-sizing: border-box;
+  min-width: 0px;
+  font-family: "Roboto", sans-serif;
+  font-size: 14px;
+  font-weight: normal;
+}
+
+.resetPassword__form-error {
+  background-color: rgb(249, 229, 231);
+}
+
+.resetPassword__form-success {
+  background-color: #e5f2f2;
+}
+
+.resetPassword__form-message section {
+  box-sizing: border-box;
+  min-width: 0px;
+  display: flex;
+  font-family: "Roboto", sans-serif;
+  line-height: 16px;
+  font-size: 14px;
+  font-weight: normal;
+  -moz-box-align: center;
+  align-items: center;
+}
+
+.resetPassword__form-message section span {
+  vertical-align: middle;
+  display: inline-block;
+  line-height: 12px;
+  font-size: 12px;
+  padding: 4px;
+  margin-right: 24px;
+  background-color: rgb(194, 0, 18);
+  color: rgb(255, 255, 255);
+  border-radius: 50%;
+}
+
+.resetPassword__form-error section span {
+  background-color: rgb(194, 0, 18);
+}
+
+.resetPassword__form-success section span {
+  background-color: #007d7f;
+}
+
+.resetPassword__form-message section div {
+  box-sizing: border-box;
+  min-width: 0px;
+  font-family: "Roboto", sans-serif;
+  line-height: 16px;
+  font-size: 14px;
+  font-weight: normal;
+  -moz-box-flex: 1;
+  flex-grow: 1;
+  text-align: left;
+}
+
+.resetPassword__form-group {
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.resetPassword__button-container {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  align-items: center;
+}
+
+.resetPassword__form-button {
+  appearance: none;
+  display: inline-block;
+  outline: 0px;
+  font-family: "Roboto", sans-serif;
+  font-size: 14px;
+  vertical-align: middle;
+  border-radius: 4px;
+  user-select: none;
+  text-align: center;
+  cursor: pointer;
+  text-decoration: none;
+  box-sizing: border-box;
+  transition: 0.1s ease-in;
+  line-height: 24px;
+  width: 100%;
+  padding: 10px 0px;
+  border: 1px solid;
+}
