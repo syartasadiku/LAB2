@@ -99,3 +99,27 @@ const unlinkFileFromStorage = async (filePath) => {
     throw error;
   }
 };
+const cleanUpFolder = async (directoryPath) => {
+  try {
+    const filesInDirectory = await fs.promises.readdir(directoryPath);
+
+    if (filesInDirectory.length === 0) {
+      await fs.promises.rmdir(directoryPath);
+      console.log(`Directory deleted: ${directoryPath}`);
+    }
+  } catch (err) {
+    console.error(`Error cleaning up folder ${directoryPath}: ${err}`);
+  }
+};
+
+const start = async () => {
+  const app = express();
+
+  app.use(cookieParser());
+  app.use(
+    cors({
+      origin: "http://localhost:3000",
+      credentials: true,
+    })
+  );
+}
