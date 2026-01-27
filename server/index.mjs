@@ -122,4 +122,48 @@ const start = async () => {
       credentials: true,
     })
   );
-}
+
+  app.use(express.static(path.join(__dirname, "/public")));
+
+  mailer.extend(app, {
+    from: "jobhorizonsite@gmail.com",
+    host: "smtp.gmail.com",
+    secureConnection: true,
+    port: 465,
+    transportMethod: "SMTP",
+    auth: {
+      user: process.env.EMAIL,
+      pass: process.env.APP_PASSWORD,
+    },
+  });
+
+  app.set("views", __dirname + "/views");
+  app.set("view engine", "ejs");
+
+  try {
+    await sequelize.authenticate();
+    console.log("Sequelize connection has been established successfully.");
+  } catch (error) {
+    console.error("Unable to connect to the sequelize database:", error);
+    return;
+  }
+
+  (async () => {
+    try {
+      await dbContext();
+      console.log("dbContext has been set up successfully.");
+    } catch (error) {
+      console.error("Error setting up dbContext:", error);
+    }
+  })();
+
+  (async () => {
+    try {
+      await mongooseConnection();
+      console.log("Connected to MongoDB.");
+    } catch (error) {
+      console.error("Error setting up MongoDB:", error);
+    }
+  })();
+
+};
