@@ -166,4 +166,1047 @@ const start = async () => {
     }
   })();
 
+  const admin = new AdminJS({
+    defaultTheme: light.id,
+    availableThemes: [dark, light],
+    assets: {
+      styles: ["/admin.css"],
+    },
+    dashboard: {
+      component: Components.Dashboard,
+      handler: dashboardHandler,
+    },
+    componentLoader,
+    resources: [
+      //MySQL DB Models
+      {
+        resource: Models.User,
+        options: {
+          parent: {
+            name: "User Models",
+            icon: "User",
+          },
+          listProperties: ["id", "email", "firstName", "lastName", "role"],
+          showProperties: [
+            "id",
+            "email",
+            "firstName",
+            "lastName",
+            "createdAt",
+            "updatedAt",
+            "role",
+          ],
+          createProperties: [
+            "email",
+            "firstName",
+            "lastName",
+            "newPassword",
+            "role",
+            "image",
+            "resume",
+          ],
+          editProperties: [
+            "email",
+            "firstName",
+            "lastName",
+            "newPassword",
+            "role",
+            "image",
+            "resume",
+          ],
+          properties: {
+            password: { isVisible: false },
+            role: {
+              availableValues: [
+                { value: "User", label: "User" },
+                { value: "Admin", label: "Admin" },
+                { value: "Editor", label: "Editor" },
+              ],
+            },
+            id: {
+              components: {
+                show: Components.LinkComponent, // this is our custom component
+              },
+            },
+          },
+          actions: {
+            new: {
+              after: async (response) => {
+                const { record } = response;
+
+                if (record.params?.imageS3Key) {
+                  const userImage = await Models.UserImage.create({
+                    s3Key: record.params.imageS3Key,
+                    bucket: record.params.imageBucket,
+                    mime: record.params.imageMime,
+                    UserId: record.params.id,
+                  });
+                }
+
+                if (record.params?.resumeS3Key) {
+                  const resume = await Models.Resume.create({
+                    s3Key: record.params.resumeS3Key,
+                    bucket: record.params.resumeBucket,
+                    mime: record.params.resumeMime,
+                    UserId: record.params.id,
+                  });
+                }
+
+                return response;
+              },
+            },
+            edit: {
+              after: async (response) => {
+                const { record } = response;
+
+                if (record.params?.imageS3Key) {
+                  let userImage = await Models.UserImage.findOne({
+                    where: { UserId: record.params.id },
+                  });
+
+                  if (userImage) {
+                    const filePath = `${userImage.bucket}/${userImage.s3Key}`;
+                    await unlinkFileFromStorage(filePath);
+
+                    userImage.set({
+                      s3Key: record.params.imageS3Key,
+                      bucket: record.params.imageBucket,
+                      mime: record.params.imageMime,
+                      UserId: record.params.id,
+                    });
+                    await userImage.save();
+                  } else {
+                    userImage = await Models.UserImage.create({
+                      s3Key: record.params.imageS3Key,
+                      bucket: record.params.imageBucket,
+                      mime: record.params.imageMime,
+                      UserId: record.params.id,
+                    });
+                  }
+                }
+
+                if (record.params?.resumeS3Key) {
+                  let resume = await Models.Resume.findOne({
+                    where: { UserId: record.params.id },
+                  });
+
+                  if (resume) {
+                    const filePath = `${resume.bucket}/${resume.s3Key}`;
+                    await unlinkFileFromStorage(filePath);
+
+                    resume.set({
+                      s3Key: record.params.resumeS3Key,
+                      bucket: record.params.resumeBucket,
+                      mime: record.params.resumeMime,
+                      UserId: record.params.id,
+                    });
+                    await resume.save();
+                  } else {
+                    resume = await Models.Resume.create({
+                      s3Key: record.params.resumeS3Key,
+                      bucket: record.params.resumeBucket,
+                      mime: record.params.resumeMime,
+                      UserId: record.params.id,
+                    });
+                  }
+                }
+
+                return response;
+              },
+            },
+            delete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const resumesToDelete = await Models.Resume.findAll({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  const imagesToDelete = await Models.UserImage.findAll({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  await Promise.all(
+                    resumesToDelete.map(async (resume) => {
+                      const filePath = `${resume.bucket}/${resume.s3Key}`;
+                      await unlinkFileFromStorage(filePath);
+                    })
+                  );
+
+                  await Promise.all(
+                    imagesToDelete.map(async (image) => {
+                      const filePath = `${image.bucket}/${image.s3Key}`;
+                      await unlinkFileFromStorage(filePath);
+                    })
+                  );
+
+                  await Models.Resume.destroy({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  console.log("Resumes unlinked from storage");
+
+                  await Models.UserImage.destroy({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  console.log("User images unlinked from storage");
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking associated resumes:", error);
+                  throw new Error("Error unlinking associated resumes");
+                }
+              },
+            },
+            bulkDelete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const resumesToDelete = await Models.Resume.findAll({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  const imagesToDelete = await Models.UserImage.findAll({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  const resumeFilePaths = resumesToDelete.map(
+                    (resume) => `${resume.bucket}/${resume.s3Key}`
+                  );
+                  const imageFilePaths = imagesToDelete.map(
+                    (resume) => `${resume.bucket}/${resume.s3Key}`
+                  );
+
+                  await Promise.all(
+                    resumeFilePaths.map(async (filePath) => {
+                      await unlinkFileFromStorage(filePath);
+                    })
+                  );
+
+                  await Promise.all(
+                    imageFilePaths.map(async (filePath) => {
+                      await unlinkFileFromStorage(filePath);
+                    })
+                  );
+
+                  await Models.Resume.destroy({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  console.log("Resumes unlinked from storage");
+
+                  await Models.UserImage.destroy({
+                    where: {
+                      UserId: null,
+                    },
+                  });
+
+                  console.log("User images unlinked from storage");
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking associated resumes:", error);
+                  throw new Error("Error unlinking associated resumes");
+                }
+              },
+            },
+          },
+        },
+        features: [
+          uploadFeature({
+            componentLoader,
+            provider: { local: { bucket: "public/profilePics" } },
+            properties: {
+              file: "image",
+              key: "imageS3Key",
+              bucket: "imageBucket",
+              mimeType: "imageMime",
+              filePath: `imageFilePath`,
+              filesToDelete: `imageFilesToDelete`,
+            },
+            validation: {
+              mimeTypes: [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/svg+xml",
+              ],
+            },
+          }),
+          uploadFeature({
+            componentLoader,
+            provider: { local: { bucket: "public/resumes" } },
+            properties: {
+              file: "resume",
+              key: "resumeS3Key",
+              bucket: "resumeBucket",
+              mimeType: "resumeMime",
+              filePath: `resumeFilePath`,
+              filesToDelete: `resumeFilesToDelete`,
+            },
+            validation: {
+              mimeTypes: [
+                "application/msword",
+                "application/pdf",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              ],
+            },
+          }),
+          passwordsFeature({
+            componentLoader,
+            properties: {
+              password: "newPassword",
+              encryptedPassword: "password",
+            },
+            hash: argon2.hash,
+          }),
+          importExportFeature({ componentLoader }),
+        ],
+      },
+      {
+        resource: Models.Resume,
+        options: {
+          parent: "User Models",
+          listProperties: ["id", "UserId", "resume"],
+          editProperties: ["UserId", "resume"],
+          showProperties: ["id", "UserId", "mime", "createdAt", "updatedAt"],
+          properties: {
+            resume: {
+              components: {
+                list: Components.RerouteLinks,
+              },
+            },
+            id: {
+              components: {
+                show: Components.LinkComponent,
+              },
+            },
+          },
+          actions: {
+            delete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const { record } = originalResponse;
+
+                  const folderPath = `${record?.params.bucket}/${record?.params.UserId}`;
+                  await cleanUpFolder(folderPath);
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking:", error);
+                  throw new Error("Error unlinking");
+                }
+              },
+            },
+            bulkDelete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const { records } = originalResponse;
+
+                  for (const record of records) {
+                    const folderPath = `${record?.params.bucket}/${record?.params.UserId}`;
+                    await cleanUpFolder(folderPath);
+                  }
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking:", error);
+                  throw new Error("Error unlinking");
+                }
+              },
+            },
+          },
+        },
+        features: [
+          uploadFeature({
+            componentLoader,
+            provider: { local: { bucket: "public/resumes" } },
+            properties: {
+              file: "resume",
+              key: "s3Key",
+              bucket: "bucket",
+              mimeType: "mime",
+            },
+            uploadPath: userUploadPath,
+            validation: {
+              mimeTypes: [
+                "application/msword",
+                "application/pdf",
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+              ],
+            },
+          }),
+          importExportFeature({ componentLoader }),
+        ],
+      },
+      {
+        resource: Models.UserImage,
+        options: {
+          parent: "User Models",
+          listProperties: ["id", "UserId", "image"],
+          editProperties: ["UserId", "image"],
+          showProperties: ["id", "UserId", "mime", "createdAt", "updatedAt"],
+          properties: {
+            image: {
+              components: {
+                list: Components.RerouteLinks,
+              },
+            },
+            id: {
+              components: {
+                show: Components.LinkComponent,
+              },
+            },
+          },
+          actions: {
+            delete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const { record } = originalResponse;
+
+                  const folderPath = `${record?.params.bucket}/${record?.params.UserId}`;
+                  await cleanUpFolder(folderPath);
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking:", error);
+                  throw new Error("Error unlinking");
+                }
+              },
+            },
+            bulkDelete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const { records } = originalResponse;
+
+                  for (const record of records) {
+                    const folderPath = `${record?.params.bucket}/${record?.params.UserId}`;
+                    await cleanUpFolder(folderPath);
+                  }
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking:", error);
+                  throw new Error("Error unlinking");
+                }
+              },
+            },
+          },
+        },
+        features: [
+          uploadFeature({
+            componentLoader,
+            provider: { local: { bucket: "public/profilePics" } },
+            properties: {
+              file: "image",
+              key: "s3Key",
+              bucket: "bucket",
+              mimeType: "mime",
+            },
+            uploadPath: userUploadPath,
+            validation: {
+              mimeTypes: [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/svg+xml",
+              ],
+            },
+          }),
+          importExportFeature({ componentLoader }),
+        ],
+      },
+      {
+        resource: Models.UserProfile,
+        options: { parent: "User Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.WorkExperience,
+        options: { parent: "User Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Education,
+        options: { parent: "User Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.ApplicantList,
+        options: {
+          parent: {
+            name: "Job Models",
+            icon: "Briefcase",
+          },
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.AppliedJob,
+        options: { parent: "User Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Company,
+        options: {
+          parent: {
+            name: "Company Models",
+          },
+          listProperties: [
+            "ID",
+            "Email",
+            "CompanyName",
+            "FreeJobPosted",
+            "createdAt",
+            "updatedAt",
+          ],
+          showProperties: [
+            "ID",
+            "Email",
+            "CompanyName",
+            "FreeJobPosted",
+            "createdAt",
+            "updatedAt",
+          ],
+          createProperties: [
+            "Email",
+            "CompanyName",
+            "FreeJobPosted",
+            "newPassword",
+            "role",
+            "image",
+          ],
+          editProperties: [
+            "Email",
+            "CompanyName",
+            "FreeJobPosted",
+            "newPassword",
+            "role",
+            "image",
+          ],
+          properties: {
+            password: { isVisible: false },
+            role: {
+              availableValues: [{ value: "Company", label: "Company" }],
+            },
+            ID: {
+              components: {
+                show: Components.LinkComponent, // this is our custom component
+              },
+            },
+          },
+          actions: {
+            new: {
+              after: async (response) => {
+                const { record } = response;
+
+                if (record.params?.s3Key) {
+                  const companyLogo = await Models.CompanyLogo.create({
+                    s3Key: record.params.s3Key,
+                    bucket: record.params.bucket,
+                    mime: record.params.mime,
+                    CompanyID: record.params.ID,
+                  });
+                }
+                return response;
+              },
+            },
+            edit: {
+              after: async (response) => {
+                const { record } = response;
+
+                if (record.params?.s3Key) {
+                  let companyLogo = await Models.CompanyLogo.findOne({
+                    where: { CompanyID: record.params.ID },
+                  });
+
+                  if (companyLogo) {
+                    const filePath = `${companyLogo.bucket}/${companyLogo.s3Key}`;
+                    await unlinkFileFromStorage(filePath);
+
+                    companyLogo.set({
+                      s3Key: record.params.s3Key,
+                      bucket: record.params.bucket,
+                      mime: record.params.mime,
+                      CompanyID: record.params.ID,
+                    });
+                    await companyLogo.save();
+                  } else {
+                    companyLogo = await Models.CompanyLogo.create({
+                      s3Key: record.params.s3Key,
+                      bucket: record.params.bucket,
+                      mime: record.params.mime,
+                      CompanyID: record.params.ID,
+                    });
+                  }
+                }
+
+                return response;
+              },
+            },
+            delete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const imagesToDelete = await Models.CompanyLogo.findAll({
+                    where: {
+                      CompanyID: null,
+                    },
+                  });
+
+                  await Promise.all(
+                    imagesToDelete.map(async (image) => {
+                      const filePath = `${image.bucket}/${image.s3Key}`;
+                      await unlinkFileFromStorage(filePath);
+                    })
+                  );
+
+                  await Models.CompanyLogo.destroy({
+                    where: {
+                      CompanyID: null,
+                    },
+                  });
+
+                  console.log("Company logos unlinked from storage");
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking associated logos:", error);
+                  throw new Error("Error unlinking associated logos");
+                }
+              },
+            },
+            bulkDelete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const imagesToDelete = await Models.CompanyLogo.findAll({
+                    where: {
+                      CompanyID: null,
+                    },
+                  });
+
+                  const imageFilePaths = imagesToDelete.map(
+                    (resume) => `${resume.bucket}/${resume.s3Key}`
+                  );
+
+                  await Promise.all(
+                    imageFilePaths.map(async (filePath) => {
+                      await unlinkFileFromStorage(filePath);
+                    })
+                  );
+
+                  await Models.CompanyLogo.destroy({
+                    where: {
+                      CompanyID: null,
+                    },
+                  });
+
+                  console.log("Company logos unlinked from storage");
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking associated logos:", error);
+                  throw new Error("Error unlinking associated logos");
+                }
+              },
+            },
+          },
+        },
+        features: [
+          passwordsFeature({
+            componentLoader,
+            properties: {
+              password: "newPassword",
+              encryptedPassword: "password",
+            },
+            hash: argon2.hash,
+          }),
+          uploadFeature({
+            componentLoader,
+            provider: { local: { bucket: "public/companyLogos" } },
+            properties: {
+              file: "image",
+              key: "s3Key",
+              bucket: "bucket",
+              mimeType: "mime",
+            },
+            validation: {
+              mimeTypes: [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/svg+xml",
+              ],
+            },
+          }),
+          importExportFeature({ componentLoader }),
+        ],
+      },
+      {
+        resource: Models.CompanyLogo,
+        options: {
+          parent: "Company Models",
+          listProperties: ["id", "CompanyID", "image"],
+          editProperties: ["CompanyID", "image"],
+          showProperties: ["id", "CompanyID", "mime", "createdAt", "updatedAt"],
+          properties: {
+            image: {
+              components: {
+                list: Components.RerouteLinks,
+              },
+            },
+            id: {
+              components: {
+                show: Components.LinkComponent,
+              },
+            },
+          },
+          actions: {
+            delete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const { record } = originalResponse;
+
+                  const folderPath = `${record?.params.bucket}/${record?.params.CompanyID}`;
+                  await cleanUpFolder(folderPath);
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking:", error);
+                  throw new Error("Error unlinking");
+                }
+              },
+            },
+            bulkDelete: {
+              after: async (originalResponse, request, context) => {
+                try {
+                  const { records } = originalResponse;
+
+                  for (const record of records) {
+                    const folderPath = `${record?.params.bucket}/${record?.params.CompanyID}`;
+                    await cleanUpFolder(folderPath);
+                  }
+
+                  return originalResponse;
+                } catch (error) {
+                  console.error("Error unlinking:", error);
+                  throw new Error("Error unlinking");
+                }
+              },
+            },
+          },
+        },
+        features: [
+          uploadFeature({
+            componentLoader,
+            provider: { local: { bucket: "public/companyLogos" } },
+            properties: {
+              file: "image",
+              key: "s3Key",
+              bucket: "bucket",
+              mimeType: "mime",
+            },
+            uploadPath: companyUploadPath,
+            validation: {
+              mimeTypes: [
+                "image/jpeg",
+                "image/png",
+                "image/webp",
+                "image/svg+xml",
+              ],
+            },
+          }),
+          importExportFeature({ componentLoader }),
+        ],
+      },
+      {
+        resource: Models.CompanyProfile,
+        options: { parent: "Company Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.InterviewList,
+        options: { parent: "Job Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Invoice,
+        options: {
+          parent: {
+            name: "Payment Models",
+            // icon: "DollarSign"
+            icon: "ShoppingCart",
+          },
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.JobField,
+        options: { parent: "Job Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.JobPosition,
+        options: { parent: "Job Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.JobPost,
+        options: { parent: "Job Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.LikedJob,
+        options: { parent: "User Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Price,
+        options: { parent: "Payment Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Product,
+        options: { parent: "Payment Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Subscription,
+        options: { parent: "Payment Models" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Explorer,
+        options: { parent: "Lab2 Detyra" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Expedition,
+        options: { parent: "Lab2 Detyra" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Shtator,
+        options: { parent: "Detyra Lab2" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Shtatorref,
+        options: { parent: "Detyra Lab2" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Botuesi,
+        options: { parent: "Detyra Lab2 Tetor" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Revista,
+        options: { parent: "Detyra Lab2 Tetor" },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Festivali,
+        options: {parent:"Detya Lab2 Shkurt"},
+        features:[importExportFeature({componentLoader})],
+      },
+      {
+        resource: Models.Eventi,
+        options: {parent:"Detya Lab2 Shkurt"},
+        features:[importExportFeature({componentLoader})],
+      },
+      {
+        resource:Models.Book,
+        options:{parent:"Detyra LABB2"},
+        features:[importExportFeature({componentLoader})],
+
+      },
+      {
+        resource: Models.Autori,
+        options:{parent:"Detyra LABB2"},
+        features:[importExportFeature({componentLoader})],
+      },
+     
+     
+      
+   
+      //MongoDB Models
+      //Default id is "_id"
+      {
+        resource: Models.ChatLog,
+        options: {
+          parent: {
+            name: "Non-relational Models",
+            icon: "None",
+          },
+          listProperties: ["_id", "sender", "receiver", "createdAt"],
+          editProperties: ["sender", "receiver", "message"],
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.InvoiceM,
+        options: {
+          parent: {
+            name: "Non-relational Models",
+            icon: "None",
+          },
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.SubscriptionPlan,
+        options: {
+          parent: {
+            name: "Non-relational Models",
+            icon: "None",
+          },
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.Testimonial,
+        options: {
+          parent: {
+            name: "User Models",
+            icon: "None",
+          },
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.ChatSupport,
+        options: {
+          parent: {
+            name: "User Models",
+            icon: "None",
+          },
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.SavedJob,
+        options: {
+          parent: {
+            name: "User Models",
+            icon: "None",
+          },
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+      {
+        resource: Models.PendingAccount,
+        options: {
+          parent: {
+            name: "Non-relational Models",
+          },
+          listProperties: ["_id", "email", "confirmTokenExpire"],
+          showProperties: [
+            "_id",
+            "email",
+            "password",
+            "confirmToken",
+            "confirmTokenExpire",
+          ],
+          editProperties: ["email", "password"],
+        },
+        features: [importExportFeature({ componentLoader })],
+      },
+    ],
+    rootPath: "/admin", // Specify the root path for AdminJS
+    branding: {
+      companyName: "JobHorizon",
+      favicon: "/favicon.ico",
+    },
+  });
+
+  const authProvider = new DefaultAuthProvider({
+    componentLoader,
+    authenticate,
+  });
+
+  const SequelizeStore = connectSessionStore(SessionStore);
+  const sessionStore = new SequelizeStore({ db: sequelize, expiration: 36000 });
+
+  const getSessionData = async (req, res) => {
+    try {
+      const sessionId = req.cookies.userSessionToken;
+
+      if (!sessionId) {
+        return null;
+      }
+
+      const sid = sessionId.split(".")[0].slice(2);
+
+      const sessionModel = sessionStore.sessionModel;
+
+      const session = await sessionModel.findOne({ where: { sid } });
+
+      if (!session) {
+        return null;
+      }
+
+      return JSON.parse(session.data);
+    } catch (error) {
+      console.error("Error fetching session data:", error);
+      return null;
+    }
+  };
+
+  const isAdmin = async (req, res, next) => {
+    try {
+      const dataObject = await getSessionData(req, res);
+
+      const { adminUser } = dataObject || {};
+
+      if (
+        adminUser?.email === "admin@example.com" ||
+        adminUser?.role === "Admin" ||
+        req.path === "/login" ||
+        req.path.startsWith("/frontend/assets/")
+      ) {
+        next();
+      } else {
+        return res.redirect("/admin/login");
+      }
+    } catch (error) {
+      console.error("Error checking admin status:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  };
+
+  const adminRouter = AdminJSExpress.buildAuthenticatedRouter(
+    admin,
+    {
+      // authenticate,
+      cookieName: "userSessionToken",
+      cookiePassword: "sessionsecret",
+      provider: authProvider,
+    },
+    null,
+    {
+      store: sessionStore,
+      resave: true,
+      saveUninitialized: true,
+      secret: "sessionsecret",
+      cookie: {
+        httpOnly: process.env.NODE_ENV === "production",
+        secure: process.env.NODE_ENV === "production",
+      },
+      name: "userSessionToken",
+    }
+  );
+
 };
