@@ -1209,4 +1209,76 @@ const start = async () => {
     }
   );
 
+  app.use(admin.options.rootPath, isAdmin, adminRouter);
+
+  // Middleware to parse JSON bodies
+  app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
+
+  // Use routes
+  app.use("/api/applicantlists", Routes.ApplicantlistRouter);
+  app.use("/api/appliedjobs", Routes.AppliedJobRouter);
+  app.use("/api/companies", Routes.CompanyRouter);
+  app.use("/api/companylogos", Routes.CompanyLogoRouter);
+  app.use("/api/companyprofiles", Routes.CompanyProfileRouter);
+  app.use("/api/educations", Routes.EducationRouter);
+  app.use("/api/interviewlists", Routes.InterviewListRouter);
+  app.use("/api/invoices", Routes.InvoiceRouter);
+  app.use("/api/invoicesM", Routes.InvoiceMRouter);
+  app.use("/api/jobfields", Routes.JobFieldRouter);
+  app.use("/api/jobpositions", Routes.JobPositionRouter);
+  app.use("/api/jobposts", Routes.JobPostRouter);
+  app.use("/api/likedjobs", Routes.LikedJobRouter);
+  app.use("/api/savedjobs", Routes.SavedJobRouter);
+  app.use("/api/prices", Routes.PriceRouter);
+  app.use("/api/products", Routes.ProductRouter);
+  app.use("/api/resumes", Routes.ResumeRouter);
+  app.use("/api/subscriptions", Routes.SubscriptionRouter);
+  app.use("/api/subscriptionsPlan", Routes.SubscriptionPlanRouter);
+  app.use("/api/users", Routes.userRouter);
+  app.use("/api/userimages", Routes.userImageRouter);
+  app.use("/api/userprofiles", Routes.userProfileRouter);
+  app.use("/api/workexperience", Routes.WorkExperienceRouter);
+  app.use("/api/pendingAccounts", Routes.PendingAccountRouter);
+  app.use("/api/testimonials", Routes.TestimonialRouter);
+  app.use("/api/chatsupports", Routes.ChatSupportRouter);
+  app.use("/api/explorers", Routes.ExplorerRouter);
+  app.use("/api/expeditions", Routes.ExpeditionRouter);
+  app.use("/api/shtator", Routes.ShtatorRouter);
+  app.use("/api/shtatorref", Routes.ShtatorrefRouter);
+  app.use("/api/botuesis", Routes.BotuesiRouter);
+  app.use("/api/revistas", Routes.RevistaRouter);
+  app.use("/api/festivals", Routes.FestivaliRouter);
+  app.use("/api/events", Routes.EventiRouter);
+  app.use("/api/books", Routes.BookRouter);
+  app.use("/api/autoris", Routes.AutoriRouter);
+  
+
+  app.use(
+    "/api/stripe",
+    express.raw({ type: "application/json" }),
+    stripeRoutes
+  );
+
+  app.get("/", async (req, res) => {
+    try {
+      const dataObject = await getSessionData(req, res);
+
+      res.send(dataObject?.adminUser);
+    } catch (error) {
+      console.error("Error fetching session data:", error);
+      res.status(500).send("Internal Server Error");
+    }
+  });
+
+  app.listen(PORT, () => {
+    console.log(
+      `AdminJS started on http://localhost:${PORT}${admin.options.rootPath}`
+    );
+  });
+
+  if (process.env.NODE_ENV === "production") await admin.initialize();
+  else admin.watch();
+
 };
+start();
